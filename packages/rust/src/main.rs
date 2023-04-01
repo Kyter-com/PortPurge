@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(version)]
@@ -18,4 +19,7 @@ fn main() {
 
     println!("Hello {}", args.name);
     println!("Port to kill: {}", args.port);
+
+    let dir = Command::new("ls").spawn();
+    println!("{:#?}", dir);
 }
