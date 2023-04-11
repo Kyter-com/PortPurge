@@ -1,5 +1,5 @@
 [package]
-name = "portassassin"
+name = "port_purge"
 version = "0.1.0"
 edition = "2021"
 
