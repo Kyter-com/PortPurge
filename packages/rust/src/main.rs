@@ -3,7 +3,6 @@ use std::process::Command;
 use std::process::Stdio;
 
 mod utils;
-use crate::utils::trim_newline;
 
 #[derive(Parser, Debug)]
 #[command(version)]
@@ -21,8 +20,6 @@ fn main() {
     println!("Running PortPurge");
     let args = Args::parse();
 
-    println!("Port to kill: {}", args.port);
-
     let pid_command = Command::new("lsof")
         .arg(format!("-i:{}", args.port))
         .arg("-t")
@@ -35,7 +32,7 @@ fn main() {
     let mut pid = String::from_utf8(pid_command.stdout).expect("Failed to get PID");
 
     // Trim the trailing \n of the PID string
-    trim_newline(&mut pid);
+    utils::trim_newline(&mut pid);
 
     if pid.is_empty() {
         println!("No process running on port {}", args.port);
