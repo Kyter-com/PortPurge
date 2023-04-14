@@ -1,6 +1,4 @@
 use clap::Parser;
-use std::process::Command;
-use std::process::Stdio;
 
 mod utils;
 
@@ -17,49 +15,30 @@ struct Args {
 }
 
 fn main() {
-    println!("Running PortPurge");
     let args = Args::parse();
 
-    let pid_command = Command::new("lsof")
-        .arg(format!("-i:{}", args.port))
-        .arg("-t")
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute command")
-        .wait_with_output()
-        .expect("Failed to wait for command");
+    let pid_result = utils::unix_find_pid_on_port(args.port);
+    let pid = match pid_result {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            println!("No processes running on port {}", args.port);
+            std::process::exit(0);
+        }
+        Err(error) => {
+            println!("Error: {}", error);
+            std::process::exit(1);
+        }
+    };
 
-    let mut pid = String::from_utf8(pid_command.stdout).expect("Failed to get PID");
-
-    // Trim the trailing \n of the PID string
-    utils::trim_newline(&mut pid);
-
-    if pid.is_empty() {
-        println!("No process running on port {}", args.port);
-        std::process::exit(0);
-    }
-
-    println!("Found process running with PID: {}", pid);
-
-    let mut kill_command = Command::new("kill");
-
-    if args.force {
-        kill_command.arg("-9");
-    }
-
-    let kill_command_output = kill_command
-        .arg(&pid)
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute command")
-        .wait_with_output()
-        .expect("Failed to wait for command");
-
-    let kill_command_result =
-        String::from_utf8(kill_command_output.stdout).expect("Failed to get command output");
-
-    if kill_command_result.is_empty() {
-        println!("Successfully killed process with PID {}", &pid);
-        println!("Used force: {}", args.force);
+    let kill_result = utils::unix_kill_process_with_pid(&pid, args.force);
+    match kill_result {
+        Ok(_) => println!(
+            "Successfully killed process on port {} with PID {}",
+            args.port, &pid
+        ),
+        Err(error) => {
+            println!("Error: {}", error);
+            std::process::exit(1);
+        }
     }
 }
