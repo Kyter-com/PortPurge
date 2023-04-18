@@ -1,38 +1,45 @@
+use std::io::{Error, ErrorKind};
 use std::process::Command;
 use std::process::Stdio;
 
+#[cfg(target_os = "linux")]
 pub fn trim_newline(s: &mut String) {
-    if s.ends_with('\n') {
+    if let Some('\n') | Some('\r') = s.chars().rev().next() {
         s.pop();
-        if s.ends_with('\r') {
+        if let Some('\r') = s.chars().rev().next() {
             s.pop();
         }
     }
 }
 
-pub fn unix_find_pid_on_port(port: u32) -> Result<Option<String>, String> {
+#[cfg(target_os = "linux")]
+pub fn unix_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
     let command = Command::new("lsof")
         .arg(format!("-i:{}", port))
         .arg("-t")
         .stdout(Stdio::piped())
-        .spawn()
-        .map_err(|err| format!("Failed to execute command: {}", err))?
-        .wait_with_output()
-        .map_err(|err| format!("Failed to wait for command: {}", err))?;
+        .spawn()?;
 
-    let mut pid =
-        String::from_utf8(command.stdout).map_err(|err| format!("Failed to get PID: {}", err))?;
+    let output = command.wait_with_output()?;
 
-    // Trim the trailing \n of the PID string
-    trim_newline(&mut pid);
+    if output.status.success() {
+        let mut pid = String::from_utf8(output.stdout)
+            .map_err(|err| Error::new(ErrorKind::Other, format!("Failed to get PID: {}", err)))?;
 
-    if pid.is_empty() {
-        Ok(None)
+        // Trim the trailing \n of the PID string
+        trim_newline(&mut pid);
+
+        if pid.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(pid))
+        }
     } else {
-        Ok(Some(pid))
+        Err(Error::new(ErrorKind::Other, "Failed to execute command"))
     }
 }
 
+#[cfg(target_os = "linux")]
 pub fn unix_kill_process_with_pid(pid: &str, force: bool) -> Result<(), String> {
     let mut command = Command::new("kill");
 
@@ -58,17 +65,20 @@ pub fn unix_kill_process_with_pid(pid: &str, force: bool) -> Result<(), String> 
     }
 }
 
-pub fn windows_find_pid_on_port(port: u32) -> Result<Option<String>, String> {
+/// Returns info about the process running on the given port on Windows.
+#[cfg(target_os = "windows")]
+pub fn windows_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
     let command = Command::new("netstat")
         .arg("-ano")
         .stdout(Stdio::piped())
-        .spawn()
-        .map_err(|err| format!("Failed to execute command: {}", err))?
-        .wait_with_output()
-        .map_err(|err| format!("Failed to wait for command: {}", err))?;
-
-    let netstat_output = String::from_utf8(command.stdout)
-        .map_err(|err| format!("Failed to get output: {}", err))?;
+        .spawn()?;
+    let output = command.wait_with_output()?;
+    let netstat_output = String::from_utf8(output.stdout).map_err(|e| {
+        Error::new(
+            ErrorKind::InvalidData,
+            format!("Failed to convert output to string: {}", e),
+        )
+    })?;
 
     let pid = netstat_output
         .lines()
@@ -79,13 +89,16 @@ pub fn windows_find_pid_on_port(port: u32) -> Result<Option<String>, String> {
                 5 => Some(columns[4]),
                 _ => None,
             }
-        })
-        .ok_or_else(|| format!("Failed to find PID on port {}", port))?;
+        });
 
-    Ok(Some(pid.to_string()))
+    match pid {
+        Some(pid) => Ok(Some(pid.to_string())),
+        None => Ok(None),
+    }
 }
 
-pub fn windows_kill_process_with_pid(pid: &str, _force: bool) -> Result<(), String> {
+#[cfg(target_os = "windows")]
+pub fn windows_kill_process_with_pid(pid: &str) -> Result<(), String> {
     let command = Command::new("taskkill")
         .args(&["/F", "/PID", pid])
         .stdout(Stdio::piped())
