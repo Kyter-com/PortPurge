@@ -2,7 +2,7 @@ use std::io::{Error, ErrorKind};
 use std::process::Command;
 use std::process::Stdio;
 
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 pub fn trim_newline(s: &mut String) {
     if let Some('\n') | Some('\r') = s.chars().rev().next() {
         s.pop();
@@ -12,7 +12,7 @@ pub fn trim_newline(s: &mut String) {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 pub fn unix_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
     let command = Command::new("lsof")
         .arg(format!("-i:{}", port))
@@ -39,7 +39,7 @@ pub fn unix_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 pub fn unix_kill_process_with_pid(pid: &str, force: bool) -> Result<(), String> {
     let mut command = Command::new("kill");
 
@@ -66,8 +66,8 @@ pub fn unix_kill_process_with_pid(pid: &str, force: bool) -> Result<(), String> 
 }
 
 /// Returns info about the process running on the given port on Windows.
-#[cfg(target_os = "windows")]
-pub fn windows_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
+#[cfg(target_family = "windows")]
+pub fn windows_find_pids_on_port(port: u32) -> Result<Option<Vec<String>>, Error> {
     let command = Command::new("netstat")
         .arg("-ano")
         .stdout(Stdio::piped())
@@ -80,24 +80,26 @@ pub fn windows_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
         )
     })?;
 
-    let pid = netstat_output
+    let pids: Vec<String> = netstat_output
         .lines()
         .filter(|line| line.contains(&format!(":{}", port)))
-        .find_map(|line| {
+        .filter_map(|line| {
             let columns: Vec<&str> = line.split_whitespace().collect();
             match columns.len() {
-                5 => Some(columns[4]),
+                5 => Some(columns[4].to_string()),
                 _ => None,
             }
-        });
+        })
+        .collect();
 
-    match pid {
-        Some(pid) => Ok(Some(pid.to_string())),
-        None => Ok(None),
+    if pids.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(pids))
     }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(target_family = "windows")]
 pub fn windows_kill_process_with_pid(pid: &str) -> Result<(), String> {
     let command = Command::new("taskkill")
         .args(&["/F", "/PID", pid])

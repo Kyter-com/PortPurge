@@ -1,5 +1,4 @@
 use clap::Parser;
-use std::env::consts::OS;
 
 mod utils;
 
@@ -21,22 +20,22 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    #[cfg(target_os = "windows")]
+    #[cfg(target_family = "windows")]
     {
-        if OS == "windows" {
-            let pid_result = utils::windows_find_pid_on_port(args.port);
-            let pid = match pid_result {
-                Ok(Some(pid)) => pid,
-                Ok(None) => {
-                    println!("No processes running on port {}", args.port);
-                    std::process::exit(0);
-                }
-                Err(error) => {
-                    println!("Error: {}", error);
-                    std::process::exit(1);
-                }
-            };
+        let pid_result = utils::windows_find_pids_on_port(args.port);
+        let pids = match pid_result {
+            Ok(Some(pid)) => pid,
+            Ok(None) => {
+                println!("No processes running on port {}", args.port);
+                std::process::exit(0);
+            }
+            Err(error) => {
+                println!("Error: {}", error);
+                std::process::exit(1);
+            }
+        };
 
+        for pid in pids {
             let kill_result = utils::windows_kill_process_with_pid(&pid);
             match kill_result {
                 Ok(_) => {
@@ -54,7 +53,7 @@ fn main() {
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(target_family = "unix")]
     {
         let pid_result = utils::unix_find_pid_on_port(args.port);
         let pid = match pid_result {
