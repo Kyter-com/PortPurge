@@ -13,7 +13,7 @@ pub fn trim_newline(s: &mut String) {
 }
 
 #[cfg(target_family = "unix")]
-pub fn unix_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
+pub fn unix_find_pids_on_port(port: u32) -> Result<Option<Vec<String>>, Error> {
     let command = Command::new("lsof")
         .arg(format!("-i:{}", port))
         .arg("-t")
@@ -23,19 +23,20 @@ pub fn unix_find_pid_on_port(port: u32) -> Result<Option<String>, Error> {
     let output = command.wait_with_output()?;
 
     if output.status.success() {
-        let mut pid = String::from_utf8(output.stdout)
-            .map_err(|err| Error::new(ErrorKind::Other, format!("Failed to get PID: {}", err)))?;
+        let mut pid_output = String::from_utf8(output.stdout)
+            .map_err(|err| Error::new(ErrorKind::Other, format!("Failed to get PIDs: {}", err)))?;
 
         // Trim the trailing \n of the PID string
-        trim_newline(&mut pid);
+        trim_newline(&mut pid_output);
 
-        if pid.is_empty() {
+        if pid_output.is_empty() {
             Ok(None)
         } else {
-            Ok(Some(pid))
+            let pids: Vec<String> = pid_output.split('\n').map(|s| s.to_string()).collect();
+            Ok(Some(pids))
         }
     } else {
-        Err(Error::new(ErrorKind::Other, "Failed to execute command"))
+        Ok(None)
     }
 }
 

@@ -55,8 +55,8 @@ fn main() {
 
     #[cfg(target_family = "unix")]
     {
-        let pid_result = utils::unix_find_pid_on_port(args.port);
-        let pid = match pid_result {
+        let pid_result = utils::unix_find_pids_on_port(args.port);
+        let pids = match pid_result {
             Ok(Some(pid)) => pid,
             Ok(None) => {
                 println!("No processes running on port {}", args.port);
@@ -68,15 +68,17 @@ fn main() {
             }
         };
 
-        let kill_result = utils::unix_kill_process_with_pid(&pid, args.force);
-        match kill_result {
-            Ok(_) => println!(
-                "Successfully killed process on port {} with PID {}",
-                args.port, &pid
-            ),
-            Err(error) => {
-                println!("Error: {}", error);
-                std::process::exit(1);
+        for pid in pids {
+            let kill_result = utils::unix_kill_process_with_pid(&pid, args.force);
+            match kill_result {
+                Ok(_) => println!(
+                    "Successfully killed process on port {} with PID {}",
+                    args.port, &pid
+                ),
+                Err(error) => {
+                    println!("Error: {}", error);
+                    std::process::exit(1);
+                }
             }
         }
     }
