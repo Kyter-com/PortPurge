@@ -32,7 +32,11 @@ pub fn unix_find_pids_on_port(port: u32) -> Result<Option<Vec<String>>, Error> {
         if pid_output.is_empty() {
             Ok(None)
         } else {
-            let pids: Vec<String> = pid_output.split('\n').map(|s| s.to_string()).collect();
+            let pids: Vec<String> = pid_output
+                .split('\n')
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
             Ok(Some(pids))
         }
     } else {
