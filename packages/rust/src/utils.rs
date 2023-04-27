@@ -27,6 +27,7 @@ pub fn unix_find_pids_on_port(port: u32) -> Result<Option<Vec<String>>, Error> {
             .map_err(|err| Error::new(ErrorKind::Other, format!("Failed to get PIDs: {}", err)))?;
 
         // Trim the trailing \n of the PID string
+        // TODO: Can this be done in the filter instead?
         trim_newline(&mut pid_output);
 
         if pid_output.is_empty() {
