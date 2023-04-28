@@ -1,4 +1,4 @@
-![Icon](https://user-images.githubusercontent.com/38516489/232332546-b217f317-2f32-4eeb-bc62-03269dfe0be0.png)
+![Icon](https://user-images.githubusercontent.com/38516489/235264175-86b284ee-9e2b-42be-b72f-23f61a54685f.png)
 
 # PortPurge
 
