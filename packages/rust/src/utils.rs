@@ -3,16 +3,6 @@ use std::process::Command;
 use std::process::Stdio;
 
 #[cfg(target_family = "unix")]
-pub fn trim_newline(s: &mut String) {
-    if let Some('\n') | Some('\r') = s.chars().rev().next() {
-        s.pop();
-        if let Some('\r') = s.chars().rev().next() {
-            s.pop();
-        }
-    }
-}
-
-#[cfg(target_family = "unix")]
 pub fn unix_find_pids_on_port(port: u32) -> Result<Option<Vec<String>>, Error> {
     let command = Command::new("lsof")
         .arg(format!("-i:{}", port))
@@ -23,12 +13,8 @@ pub fn unix_find_pids_on_port(port: u32) -> Result<Option<Vec<String>>, Error> {
     let output = command.wait_with_output()?;
 
     if output.status.success() {
-        let mut pid_output = String::from_utf8(output.stdout)
+        let pid_output = String::from_utf8(output.stdout)
             .map_err(|err| Error::new(ErrorKind::Other, format!("Failed to get PIDs: {}", err)))?;
-
-        // Trim the trailing \n of the PID string
-        // TODO: Can this be done in the filter instead?
-        trim_newline(&mut pid_output);
 
         if pid_output.is_empty() {
             Ok(None)

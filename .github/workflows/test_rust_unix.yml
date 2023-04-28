@@ -1,0 +1,20 @@
+name: Test Rust PortPurge on Unix
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: moonrepo/setup-rust@v0
+
+      - name: Run Tests
+        run: cargo test
