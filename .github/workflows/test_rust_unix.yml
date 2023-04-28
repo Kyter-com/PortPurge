@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+defaults:
+  run:
+    working-directory: packages/rust
+
 jobs:
   Test:
     runs-on: ubuntu-latest
-    working-directory: packages/rust
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
